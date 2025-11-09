@@ -5,7 +5,6 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.color.BlockColors;
 import net.minecraft.client.renderer.color.IBlockColor;
-import net.minecraft.client.renderer.color.ItemColors;
 import net.minecraft.block.material.Material;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
@@ -15,6 +14,7 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper.UnableToAccessFieldExc
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.registries.IRegistryDelegate;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -53,7 +53,7 @@ public class ColorTintHandler {
     }
 
     private static void registerBlockColors(BlockColors bc) {
-        Map<Block, IBlockColor> colorMap;
+        Map<?, IBlockColor> colorMap;
         try {
             colorMap = ReflectionHelper.getPrivateValue(
                     BlockColors.class,
@@ -71,10 +71,15 @@ public class ColorTintHandler {
             return;
         }
 
-        List<Block> blocks = new ArrayList<>(colorMap.keySet());
+        List<Object> keys = new ArrayList<>(colorMap.keySet());
         Map<Block, IBlockColor> originals = new HashMap<>();
-        for (Block block : blocks) {
-            IBlockColor original = colorMap.get(block);
+        for (Object key : keys) {
+            Block block = unwrapBlockKey(key);
+            if (block == null) {
+                continue;
+            }
+
+            IBlockColor original = colorMap.get(key);
             if (original == null || original instanceof WrappedBlockColor || !WRAPPED_BLOCKS.add(block)) {
                 continue;
             }
@@ -134,5 +139,21 @@ public class ColorTintHandler {
 
             return ColorUtil.hsvToRgbInt(hsv);
         }
+    }
+
+    @Nullable
+    private static Block unwrapBlockKey(Object key) {
+        if (key instanceof Block) {
+            return (Block) key;
+        }
+
+        if (key instanceof IRegistryDelegate) {
+            Object value = ((IRegistryDelegate<?>) key).get();
+            if (value instanceof Block) {
+                return (Block) value;
+            }
+        }
+
+        return null;
     }
 }
