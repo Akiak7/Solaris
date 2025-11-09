@@ -55,7 +55,12 @@ public class ColorTintHandler {
     private static void registerBlockColors(BlockColors bc) {
         Map<Block, IBlockColor> colorMap;
         try {
-            colorMap = ReflectionHelper.getPrivateValue(BlockColors.class, bc, "blockColorMap");
+            colorMap = ReflectionHelper.getPrivateValue(
+                    BlockColors.class,
+                    bc,
+                    "blockColorMap",
+                    "field_186725_a",
+                    "mapBlockColors");
         } catch (UnableToAccessFieldException ex) {
             logOnce("Failed to access blockColorMap via reflection; skipping dynamic registration");
             return;
