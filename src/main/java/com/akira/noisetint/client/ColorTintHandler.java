@@ -5,6 +5,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.color.BlockColors;
 import net.minecraft.client.renderer.color.IBlockColor;
+import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
@@ -14,6 +15,7 @@ import net.minecraftforge.fml.relauncher.ReflectionHelper.UnableToAccessFieldExc
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.IRegistryDelegate;
 
 import javax.annotation.Nullable;
@@ -29,6 +31,7 @@ public class ColorTintHandler {
 
     private static boolean LOGGED = false;
     private static final Set<Block> WRAPPED_BLOCKS = new HashSet<>();
+    private static final IBlockColor FALLBACK_BLOCK_COLOR = new FallbackBlockColor();
 
     private static void logOnce(String msg) {
         if (!LOGGED) {
@@ -88,15 +91,27 @@ public class ColorTintHandler {
 
         if (originals.isEmpty()) {
             logOnce("No block color handlers found to wrap");
-            return;
+        } else {
+            logOnce("Wrapping " + originals.size() + " block color handlers for noise tinting");
+
+            for (Map.Entry<Block, IBlockColor> entry : originals.entrySet()) {
+                Block block = entry.getKey();
+                IBlockColor wrapped = new WrappedBlockColor(block, entry.getValue());
+                bc.registerBlockColorHandler(wrapped, block);
+            }
         }
 
-        logOnce("Wrapping " + originals.size() + " block color handlers for noise tinting");
+        for (Block block : ForgeRegistries.BLOCKS.getValuesCollection()) {
+            if (block == null || WRAPPED_BLOCKS.contains(block)) {
+                continue;
+            }
 
-        for (Map.Entry<Block, IBlockColor> entry : originals.entrySet()) {
-            Block block = entry.getKey();
-            IBlockColor wrapped = new WrappedBlockColor(block, entry.getValue());
-            bc.registerBlockColorHandler(wrapped, block);
+            if (block.getDefaultState().getMaterial() == Material.WATER) {
+                continue;
+            }
+
+            bc.registerBlockColorHandler(FALLBACK_BLOCK_COLOR, block);
+            WRAPPED_BLOCKS.add(block);
         }
     }
 
@@ -136,6 +151,28 @@ public class ColorTintHandler {
                 hsv[1] = ColorUtil.clamp01(hsv[1] * tint[1]);
                 hsv[2] = ColorUtil.clamp01(hsv[2] * tint[2]);
             }
+
+            return ColorUtil.hsvToRgbInt(hsv);
+        }
+    }
+
+    private static class FallbackBlockColor implements IBlockColor {
+
+        @Override
+        public int colorMultiplier(net.minecraft.block.state.IBlockState state, @Nullable IBlockAccess world, @Nullable BlockPos pos, int tintIndex) {
+            if (world == null || pos == null) {
+                return 0xFFFFFF;
+            }
+
+            MapColor mapColor = state.getMapColor(world, pos);
+            int base = mapColor != null ? mapColor.colorValue : 0xFFFFFF;
+
+            float[] hsv = ColorUtil.rgbToHsv(base);
+            float[] tint = ChunkTintCache.getTint(world, pos);
+
+            hsv[0] = ColorUtil.wrapHue(hsv[0] + tint[0]);
+            hsv[1] = ColorUtil.clamp01(hsv[1] * tint[1]);
+            hsv[2] = ColorUtil.clamp01(hsv[2] * tint[2]);
 
             return ColorUtil.hsvToRgbInt(hsv);
         }
