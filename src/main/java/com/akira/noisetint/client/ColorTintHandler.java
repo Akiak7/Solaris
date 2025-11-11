@@ -136,23 +136,11 @@ public class ColorTintHandler {
                 return base;
             }
 
-            float[] hsv = ColorUtil.rgbToHsv(base);
             float[] tint = ChunkTintCache.getTint(world, pos);
-
             if (isWater) {
-                float hueScale = 0.5f;
-                float satScale = 0.5f;
-                float valScale = 0.5f;
-                hsv[0] = ColorUtil.wrapHue(hsv[0] + tint[0] * hueScale);
-                hsv[1] = ColorUtil.clamp01(hsv[1] * (1.0f + (tint[1] - 1.0f) * satScale));
-                hsv[2] = ColorUtil.clamp01(hsv[2] * (1.0f + (tint[2] - 1.0f) * valScale));
-            } else {
-                hsv[0] = ColorUtil.wrapHue(hsv[0] + tint[0]);
-                hsv[1] = ColorUtil.clamp01(hsv[1] * tint[1]);
-                hsv[2] = ColorUtil.clamp01(hsv[2] * tint[2]);
+                return applyWaterTint(base, tint);
             }
-
-            return ColorUtil.hsvToRgbInt(hsv);
+            return applyTint(base, tint, false);
         }
     }
 
@@ -167,15 +155,40 @@ public class ColorTintHandler {
             MapColor mapColor = state.getMapColor(world, pos);
             int base = mapColor != null ? mapColor.colorValue : 0xFFFFFF;
 
-            float[] hsv = ColorUtil.rgbToHsv(base);
             float[] tint = ChunkTintCache.getTint(world, pos);
-
-            hsv[0] = ColorUtil.wrapHue(hsv[0] + tint[0]);
-            hsv[1] = ColorUtil.clamp01(hsv[1] * tint[1]);
-            hsv[2] = ColorUtil.clamp01(hsv[2] * tint[2]);
-
-            return ColorUtil.hsvToRgbInt(hsv);
+            return applyTint(base, tint, true);
         }
+    }
+
+    private static int applyTint(int baseColor, float[] tint, boolean boostLowSaturation) {
+        float[] hsv = ColorUtil.rgbToHsv(baseColor);
+        if (boostLowSaturation) {
+            if (hsv[1] < 0.1f) {
+                hsv[1] = 0.1f;
+            }
+            if (hsv[2] < 0.25f) {
+                hsv[2] = 0.25f;
+            }
+        }
+
+        hsv[0] = ColorUtil.wrapHue(hsv[0] + tint[0]);
+        hsv[1] = ColorUtil.clamp01(hsv[1] * tint[1]);
+        hsv[2] = ColorUtil.clamp01(hsv[2] * tint[2]);
+
+        return ColorUtil.hsvToRgbInt(hsv);
+    }
+
+    private static int applyWaterTint(int baseColor, float[] tint) {
+        float[] hsv = ColorUtil.rgbToHsv(baseColor);
+        float hueScale = 0.5f;
+        float satScale = 0.5f;
+        float valScale = 0.5f;
+
+        hsv[0] = ColorUtil.wrapHue(hsv[0] + tint[0] * hueScale);
+        hsv[1] = ColorUtil.clamp01(hsv[1] * (1.0f + (tint[1] - 1.0f) * satScale));
+        hsv[2] = ColorUtil.clamp01(hsv[2] * (1.0f + (tint[2] - 1.0f) * valScale));
+
+        return ColorUtil.hsvToRgbInt(hsv);
     }
 
     @Nullable
