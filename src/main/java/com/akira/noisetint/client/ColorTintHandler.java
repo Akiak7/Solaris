@@ -324,7 +324,7 @@ public class ColorTintHandler {
             int base = mapColor != null ? mapColor.colorValue : 0xFFFFFF;
 
             float[] tint = ChunkTintCache.getTint(world, pos);
-            return applyTint(base, tint, true);
+            return applyFallbackTint(base, tint);
         }
     }
 
@@ -344,6 +344,34 @@ public class ColorTintHandler {
         hsv[2] = ColorUtil.clamp01(hsv[2] * tint[2]);
 
         return ColorUtil.hsvToRgbInt(hsv);
+    }
+
+    private static int applyFallbackTint(int baseColor, float[] tint) {
+        float[] hsv = ColorUtil.rgbToHsv(baseColor);
+
+        float baseHue = hsv[0];
+        float baseSat = hsv[1];
+        float baseVal = hsv[2];
+
+        float hueAnchor = baseSat >= 0.15f ? baseHue : 180f;
+        float hue = ColorUtil.wrapHue(hueAnchor + tint[0]);
+
+        float satNoise = 0.55f + (tint[1] - 1.0f) * 0.5f;
+        satNoise = ColorUtil.clamp01(satNoise);
+        satNoise = Math.min(satNoise, 0.95f);
+        float saturation;
+        if (baseSat < 0.2f) {
+            saturation = satNoise;
+        } else {
+            saturation = ColorUtil.clamp01(baseSat * 0.6f + satNoise * 0.4f);
+        }
+
+        float valNoise = 0.55f + (tint[2] - 1.0f) * 0.35f;
+        valNoise = Math.max(0.25f, ColorUtil.clamp01(valNoise));
+        float baseValue = Math.max(baseVal, 0.25f);
+        float value = ColorUtil.clamp01(baseValue * 0.6f + valNoise * 0.4f);
+
+        return ColorUtil.hsvToRgbInt(new float[]{hue, saturation, value});
     }
 
     private static int applyWaterTint(int baseColor, float[] tint) {
