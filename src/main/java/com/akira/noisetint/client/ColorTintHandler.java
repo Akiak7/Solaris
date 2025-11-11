@@ -32,6 +32,7 @@ import org.apache.logging.log4j.Logger;
 import net.minecraft.client.renderer.block.statemap.BlockStateMapper;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.util.registry.IRegistry;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -49,6 +50,8 @@ public class ColorTintHandler {
     private static final Set<Block> WRAPPED_BLOCKS = new HashSet<>();
     private static final Set<Block> FALLBACK_BLOCKS = new HashSet<>();
     private static final IBlockColor FALLBACK_BLOCK_COLOR = new FallbackBlockColor();
+    @Nullable
+    private static IRegistry<ModelResourceLocation, IBakedModel> MODEL_REGISTRY;
 
     private static void logOnce(String msg) {
         if (!LOGGED) {
@@ -69,31 +72,9 @@ public class ColorTintHandler {
 
     @SubscribeEvent
     public void onModelBake(ModelBakeEvent e) {
-        if (FALLBACK_BLOCKS.isEmpty()) {
-            return;
-        }
-
-        BlockModelShapes shapes = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes();
-        BlockStateMapper mapper = shapes.getBlockStateMapper();
-
-        for (Block block : FALLBACK_BLOCKS) {
-            Map<IBlockState, ModelResourceLocation> variants = mapper.getVariants(block);
-            if (variants == null || variants.isEmpty()) {
-                continue;
-            }
-
-            for (ModelResourceLocation mrl : variants.values()) {
-                if (mrl == null) {
-                    continue;
-                }
-
-                IBakedModel model = e.getModelRegistry().getObject(mrl);
-                if (model == null || model instanceof TintedBakedModel) {
-                    continue;
-                }
-
-                e.getModelRegistry().putObject(mrl, new TintedBakedModel(model));
-            }
+        MODEL_REGISTRY = e.getModelRegistry();
+        if (!FALLBACK_BLOCKS.isEmpty()) {
+            wrapModelsForBlocks(MODEL_REGISTRY, FALLBACK_BLOCKS);
         }
     }
 
@@ -172,6 +153,34 @@ public class ColorTintHandler {
             WRAPPED_BLOCKS.addAll(fallbackTargets);
             FALLBACK_BLOCKS.addAll(fallbackTargets);
             LOGGER.info("Registered fallback tint handler for {} blocks", fallbackTargets.size());
+            if (MODEL_REGISTRY != null) {
+                wrapModelsForBlocks(MODEL_REGISTRY, fallbackTargets);
+            }
+        }
+    }
+
+    private static void wrapModelsForBlocks(IRegistry<ModelResourceLocation, IBakedModel> registry, Iterable<Block> blocks) {
+        BlockModelShapes shapes = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes();
+        BlockStateMapper mapper = shapes.getBlockStateMapper();
+
+        for (Block block : blocks) {
+            Map<IBlockState, ModelResourceLocation> variants = mapper.getVariants(block);
+            if (variants == null || variants.isEmpty()) {
+                continue;
+            }
+
+            for (ModelResourceLocation mrl : variants.values()) {
+                if (mrl == null) {
+                    continue;
+                }
+
+                IBakedModel model = registry.getObject(mrl);
+                if (model == null || model instanceof TintedBakedModel) {
+                    continue;
+                }
+
+                registry.putObject(mrl, new TintedBakedModel(model));
+            }
         }
     }
 
