@@ -5,6 +5,7 @@ import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.renderer.BlockModelShapes;
+import net.minecraft.client.renderer.BlockRendererDispatcher;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.block.model.IBakedModel;
 import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
@@ -35,6 +36,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.util.registry.IRegistry;
 
 import javax.annotation.Nullable;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,6 +54,8 @@ public class ColorTintHandler {
     private static final IBlockColor FALLBACK_BLOCK_COLOR = new FallbackBlockColor();
     @Nullable
     private static IRegistry<ModelResourceLocation, IBakedModel> MODEL_REGISTRY;
+    @Nullable
+    private static Map<IBlockState, IBakedModel> STATE_MODEL_CACHE;
 
     private static void logOnce(String msg) {
         if (!LOGGED) {
@@ -160,8 +164,23 @@ public class ColorTintHandler {
     }
 
     private static void wrapModelsForBlocks(IRegistry<ModelResourceLocation, IBakedModel> registry, Iterable<Block> blocks) {
-        BlockModelShapes shapes = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes();
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc == null) {
+            return;
+        }
+
+        BlockRendererDispatcher dispatcher = mc.getBlockRendererDispatcher();
+        if (dispatcher == null) {
+            return;
+        }
+
+        BlockModelShapes shapes = dispatcher.getBlockModelShapes();
+        if (shapes == null) {
+            return;
+        }
+
         BlockStateMapper mapper = shapes.getBlockStateMapper();
+        Map<IBlockState, IBakedModel> stateModels = getStateModelCache(shapes);
 
         for (Block block : blocks) {
             Map<IBlockState, ModelResourceLocation> variants = mapper.getVariants(block);
@@ -169,19 +188,92 @@ public class ColorTintHandler {
                 continue;
             }
 
-            for (ModelResourceLocation mrl : variants.values()) {
+            for (Map.Entry<IBlockState, ModelResourceLocation> entry : variants.entrySet()) {
+                ModelResourceLocation mrl = entry.getValue();
                 if (mrl == null) {
                     continue;
                 }
 
                 IBakedModel model = registry.getObject(mrl);
-                if (model == null || model instanceof TintedBakedModel) {
+                if (model == null) {
                     continue;
                 }
 
-                registry.putObject(mrl, new TintedBakedModel(model));
+                IBakedModel tinted = model instanceof TintedBakedModel ? model : new TintedBakedModel(model);
+                if (tinted != model) {
+                    registry.putObject(mrl, tinted);
+                }
+
+                if (stateModels != null) {
+                    IBlockState state = entry.getKey();
+                    IBakedModel cached = stateModels.get(state);
+                    if (cached != null && !(cached instanceof TintedBakedModel)) {
+                        stateModels.put(state, tinted);
+                    }
+                }
             }
         }
+    }
+
+    @Nullable
+    @SuppressWarnings("unchecked")
+    private static Map<IBlockState, IBakedModel> getStateModelCache(BlockModelShapes shapes) {
+        if (STATE_MODEL_CACHE != null) {
+            return STATE_MODEL_CACHE;
+        }
+
+        try {
+            STATE_MODEL_CACHE = ReflectionHelper.getPrivateValue(
+                    BlockModelShapes.class,
+                    shapes,
+                    "stateModels",
+                    "bakedModelStore",
+                    "field_178124_c",
+                    "field_178123_b");
+        } catch (UnableToAccessFieldException ignored) {
+            // fall through to reflective search
+        }
+
+        if (STATE_MODEL_CACHE != null) {
+            return STATE_MODEL_CACHE;
+        }
+
+        for (Field field : BlockModelShapes.class.getDeclaredFields()) {
+            if (!Map.class.isAssignableFrom(field.getType())) {
+                continue;
+            }
+
+            try {
+                field.setAccessible(true);
+                Object value = field.get(shapes);
+                if (!(value instanceof Map)) {
+                    continue;
+                }
+
+                Map<?, ?> map = (Map<?, ?>) value;
+                if (!map.isEmpty()) {
+                    Object sample = map.values().iterator().next();
+                    if (sample instanceof IBakedModel) {
+                        STATE_MODEL_CACHE = (Map<IBlockState, IBakedModel>) map;
+                        return STATE_MODEL_CACHE;
+                    }
+                } else {
+                    String name = field.getName();
+                    if ("stateModels".equals(name) ||
+                            "bakedModelStore".equals(name) ||
+                            "field_178124_c".equals(name) ||
+                            "field_178123_b".equals(name)) {
+                        STATE_MODEL_CACHE = (Map<IBlockState, IBakedModel>) map;
+                        return STATE_MODEL_CACHE;
+                    }
+                }
+            } catch (IllegalAccessException ignored) {
+                // try next field
+            }
+        }
+
+        logOnce("Unable to locate BlockModelShapes state model cache; fallback tinting may be incomplete");
+        return null;
     }
 
     private static class WrappedBlockColor implements IBlockColor {
