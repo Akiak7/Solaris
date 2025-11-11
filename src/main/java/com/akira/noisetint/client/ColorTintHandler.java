@@ -17,6 +17,8 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.registries.IRegistryDelegate;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -29,13 +31,14 @@ import java.util.Set;
 @SideOnly(Side.CLIENT)
 public class ColorTintHandler {
 
+    private static final Logger LOGGER = LogManager.getLogger("NoisyBiomes");
     private static boolean LOGGED = false;
     private static final Set<Block> WRAPPED_BLOCKS = new HashSet<>();
     private static final IBlockColor FALLBACK_BLOCK_COLOR = new FallbackBlockColor();
 
     private static void logOnce(String msg) {
         if (!LOGGED) {
-            org.apache.logging.log4j.LogManager.getLogger("NoisyBiomes").info(msg);
+            LOGGER.info(msg);
             LOGGED = true;
         }
     }
@@ -101,6 +104,7 @@ public class ColorTintHandler {
             }
         }
 
+        List<Block> fallbackTargets = new ArrayList<>();
         for (Block block : ForgeRegistries.BLOCKS.getValuesCollection()) {
             if (block == null || WRAPPED_BLOCKS.contains(block)) {
                 continue;
@@ -110,8 +114,19 @@ public class ColorTintHandler {
                 continue;
             }
 
-            bc.registerBlockColorHandler(FALLBACK_BLOCK_COLOR, block);
-            WRAPPED_BLOCKS.add(block);
+            Object delegate = block.delegate;
+            if (delegate != null && colorMap.containsKey(delegate)) {
+                // Already has a handler (likely wrapped above).
+                continue;
+            }
+
+            fallbackTargets.add(block);
+        }
+
+        if (!fallbackTargets.isEmpty()) {
+            bc.registerBlockColorHandler(FALLBACK_BLOCK_COLOR, fallbackTargets.toArray(new Block[0]));
+            WRAPPED_BLOCKS.addAll(fallbackTargets);
+            LOGGER.info("Registered fallback tint handler for {} blocks", fallbackTargets.size());
         }
     }
 
@@ -152,7 +167,14 @@ public class ColorTintHandler {
                 return 0xFFFFFF;
             }
 
-            MapColor mapColor = state.getMapColor(world, pos);
+            net.minecraft.block.state.IBlockState actual = state;
+            try {
+                actual = state.getActualState(world, pos);
+            } catch (Exception ignored) {
+                // Chunk might be missing; fall back to the passed state.
+            }
+
+            MapColor mapColor = actual.getMapColor(world, pos);
             int base = mapColor != null ? mapColor.colorValue : 0xFFFFFF;
 
             float[] tint = ChunkTintCache.getTint(world, pos);
