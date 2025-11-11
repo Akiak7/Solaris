@@ -3,13 +3,22 @@ package com.akira.noisetint.client;
 import com.akira.noisetint.util.ColorUtil;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.client.renderer.BlockModelShapes;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.IBakedModel;
+import net.minecraft.client.renderer.block.model.ItemCameraTransforms;
+import net.minecraft.client.renderer.block.model.ItemOverrideList;
 import net.minecraft.client.renderer.color.BlockColors;
 import net.minecraft.client.renderer.color.IBlockColor;
+import net.minecraft.client.renderer.vertex.VertexFormat;
 import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
+import net.minecraft.client.renderer.block.model.ModelResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.IBlockAccess;
 import net.minecraftforge.client.event.ColorHandlerEvent;
+import net.minecraftforge.client.event.ModelBakeEvent;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import net.minecraftforge.fml.relauncher.ReflectionHelper.UnableToAccessFieldException;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
@@ -19,6 +28,10 @@ import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import net.minecraftforge.registries.IRegistryDelegate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import net.minecraft.client.renderer.block.statemap.BlockStateMapper;
+import net.minecraft.util.EnumFacing;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -34,6 +47,7 @@ public class ColorTintHandler {
     private static final Logger LOGGER = LogManager.getLogger("NoisyBiomes");
     private static boolean LOGGED = false;
     private static final Set<Block> WRAPPED_BLOCKS = new HashSet<>();
+    private static final Set<Block> FALLBACK_BLOCKS = new HashSet<>();
     private static final IBlockColor FALLBACK_BLOCK_COLOR = new FallbackBlockColor();
 
     private static void logOnce(String msg) {
@@ -51,6 +65,36 @@ public class ColorTintHandler {
     @SubscribeEvent
     public void onItemColors(ColorHandlerEvent.Item e) {
         // Keep items vanilla to avoid weird UI; no registration needed.
+    }
+
+    @SubscribeEvent
+    public void onModelBake(ModelBakeEvent e) {
+        if (FALLBACK_BLOCKS.isEmpty()) {
+            return;
+        }
+
+        BlockModelShapes shapes = Minecraft.getMinecraft().getBlockRendererDispatcher().getBlockModelShapes();
+        BlockStateMapper mapper = shapes.getBlockStateMapper();
+
+        for (Block block : FALLBACK_BLOCKS) {
+            Map<IBlockState, ModelResourceLocation> variants = mapper.getVariants(block);
+            if (variants == null || variants.isEmpty()) {
+                continue;
+            }
+
+            for (ModelResourceLocation mrl : variants.values()) {
+                if (mrl == null) {
+                    continue;
+                }
+
+                IBakedModel model = e.getModelRegistry().getObject(mrl);
+                if (model == null || model instanceof TintedBakedModel) {
+                    continue;
+                }
+
+                e.getModelRegistry().putObject(mrl, new TintedBakedModel(model));
+            }
+        }
     }
 
     public static void registerBlockAndItemColors() {
@@ -126,6 +170,7 @@ public class ColorTintHandler {
         if (!fallbackTargets.isEmpty()) {
             bc.registerBlockColorHandler(FALLBACK_BLOCK_COLOR, fallbackTargets.toArray(new Block[0]));
             WRAPPED_BLOCKS.addAll(fallbackTargets);
+            FALLBACK_BLOCKS.addAll(fallbackTargets);
             LOGGER.info("Registered fallback tint handler for {} blocks", fallbackTargets.size());
         }
     }
@@ -227,5 +272,72 @@ public class ColorTintHandler {
         }
 
         return null;
+    }
+
+    private static class TintedBakedModel implements IBakedModel {
+        private final IBakedModel delegate;
+
+        private TintedBakedModel(IBakedModel delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public List<BakedQuad> getQuads(@Nullable IBlockState state, @Nullable EnumFacing side, long rand) {
+            List<BakedQuad> original = delegate.getQuads(state, side, rand);
+            if (original.isEmpty()) {
+                return original;
+            }
+
+            boolean mutated = false;
+            List<BakedQuad> result = new ArrayList<>(original.size());
+            for (BakedQuad quad : original) {
+                if (quad.hasTintIndex()) {
+                    result.add(quad);
+                } else {
+                    result.add(withTintIndex(quad, 0));
+                    mutated = true;
+                }
+            }
+            return mutated ? result : original;
+        }
+
+        @Override
+        public boolean isAmbientOcclusion() {
+            return delegate.isAmbientOcclusion();
+        }
+
+        @Override
+        public boolean isGui3d() {
+            return delegate.isGui3d();
+        }
+
+        @Override
+        public boolean isBuiltInRenderer() {
+            return delegate.isBuiltInRenderer();
+        }
+
+        @Override
+        public TextureAtlasSprite getParticleTexture() {
+            return delegate.getParticleTexture();
+        }
+
+        @Override
+        public ItemCameraTransforms getItemCameraTransforms() {
+            return delegate.getItemCameraTransforms();
+        }
+
+        @Override
+        public ItemOverrideList getOverrides() {
+            return delegate.getOverrides();
+        }
+    }
+
+    private static BakedQuad withTintIndex(BakedQuad quad, int tintIndex) {
+        int[] data = quad.getVertexData().clone();
+        EnumFacing face = quad.getFace();
+        TextureAtlasSprite sprite = quad.getSprite();
+        boolean diffuse = quad.shouldApplyDiffuseLighting();
+        VertexFormat format = quad.getFormat();
+        return new BakedQuad(data, tintIndex, face, sprite, diffuse, format);
     }
 }
