@@ -9,7 +9,8 @@ public void preInit() {
     MinecraftForge.EVENT_BUS.register(new FogHandler());
     MinecraftForge.EVENT_BUS.register(new ChunkTintCache());
     MinecraftForge.EVENT_BUS.register(new WorldHooks());
-    MinecraftForge.EVENT_BUS.register(new ColorTintHandler()); // <-- add this
+    MinecraftForge.EVENT_BUS.register(new ColorTintHandler());
+    //ModelTintEnforcer.register();
 }
 
 @Override

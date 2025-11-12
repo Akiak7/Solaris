@@ -9,14 +9,14 @@ public final class NoiseFieldCommon {
     private static OpenSimplexNoise baseTerrain, warpXTerrain, warpZTerrain;
     private static final long TERRAIN_SALT = 0xC0FFEEBEEF12345AL;
 
-    private static final double MAIN_SCALE = 1.0 / 2048.0;  // large regions
+    private static final double MAIN_SCALE = 1.0 / 4096.0;  // large regions
     private static final double WARP_SCALE = 1.0 / 1024.0;
     private static final double WARP_AMPL  = 0.0;
 
     // visual-tuned ranges; we’ll map to height deltas in Variant
     private static final float HUE_DEG_AMPL = 60f;   // UNUSED
-    private static final float SAT_MUL_AMPL = 0.41f; // HEIGHT VARIATION
-    private static final float VAL_MUL_AMPL = 0.41f; // DEPTH/HEIGHT
+    private static final float SAT_MUL_AMPL = 0.2f; // HEIGHT VARIATION
+    private static final float VAL_MUL_AMPL = 0.2f; // DEPTH/HEIGHT
 
     public static void reseed(long seed) {
         worldSeed = seed;

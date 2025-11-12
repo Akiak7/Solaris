@@ -16,6 +16,14 @@ public class NoisyBiomes {
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent e) {
         proxy.preInit();
+            try {
+        org.spongepowered.asm.mixin.Mixins.addConfiguration("mixins.noisybiomes.json");
+        org.apache.logging.log4j.LogManager.getLogger("NoisyBiomes")
+            .info("Injected mixin config programmatically");
+    } catch (Throwable t) {
+        org.apache.logging.log4j.LogManager.getLogger("NoisyBiomes")
+            .error("Failed to inject mixin config", t);
+    }
     }
 
     @Mod.EventHandler

@@ -1,12 +1,10 @@
 {
-  "package": "com.akira.noisetint.mixin",
-  "required": true,
-  "refmap": "mixins.noisybiomes.refmap.json",
+  "required": false,
   "minVersion": "0.8.5",
+  "package": "com.akira.noisetint.mixin",
+  "refmap": "mixins.noisybiomes.refmap.json",
   "compatibilityLevel": "JAVA_8",
-  "mixins": [
-    "MixinChunkGeneratorOverworld"
-  ],
-  "client": [],
-  "server": []
+  "client": [
+    "MixinBlockColors"
+  ]
 }
