@@ -77,7 +77,7 @@ public class FogHandler {
             lastR = tr; lastG = tg; lastB = tb;
             hasLast = true;
         }
-        float alpha = 0.2f; // stronger smoothing
+        float alpha = 0.01f; // stronger smoothing
         lastR = lastR * (1 - alpha) + tr * alpha;
         lastG = lastG * (1 - alpha) + tg * alpha;
         lastB = lastB * (1 - alpha) + tb * alpha;
