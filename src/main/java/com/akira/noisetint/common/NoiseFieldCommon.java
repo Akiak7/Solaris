@@ -15,8 +15,8 @@ public final class NoiseFieldCommon {
 
     // visual-tuned ranges; we’ll map to height deltas in Variant
     private static final float HUE_DEG_AMPL = 60f;   // UNUSED
-    private static final float SAT_MUL_AMPL = 0.41f; // HEIGHT VARIATION
-    private static final float VAL_MUL_AMPL = 0.41f; // DEPTH/HEIGHT
+    private static final float SAT_MUL_AMPL = 0.18f; // HEIGHT VARIATION
+    private static final float VAL_MUL_AMPL = 0.18f; // DEPTH/HEIGHT
 
     public static void reseed(long seed) {
         worldSeed = seed;

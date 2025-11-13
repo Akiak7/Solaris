@@ -1,0 +1,14 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.akira.noisetint.mixin.bop",
+  "plugin": "com.akira.noisetint.core.NoisyMixinPlugin",
+  "refmap": "mixins.noisybiomes.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "MixinChunkGeneratorOverworldBOP_Context",
+    "MixinChunkGeneratorOverworldBOP_Bias"
+  ],
+  "client": [],
+  "server": []
+}

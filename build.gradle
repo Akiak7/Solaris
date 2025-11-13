@@ -48,7 +48,7 @@ base {
     archivesName.set(propertyString('mod_id'))
 }
 
-tasks.decompressDecompiledSources.enabled !propertyBool('change_minecraft_sources')
+tasks.decompressDecompiledSources.enabled = !propertyBool('change_minecraft_sources')
 
 java {
     toolchain {
@@ -87,7 +87,7 @@ minecraft {
     if (propertyBool('use_mixins')) {
         args << '-Dmixin.hotSwap=true'
         args << '-Dmixin.checks.interfaces=true'
-        args << '-Dmixin.debug.export=true'
+        //args << '-Dmixin.debug.export=true'
     }
     extraRunJvmArguments.addAll(args)
     extraRunJvmArguments.addAll(propertyStringList('extra_jvm_args'))
@@ -107,7 +107,12 @@ repositories {
         name 'CleanroomMC Maven'
         url 'https://maven.cleanroommc.com'
     }
+    maven {
+        name = 'CurseMaven'
+        url = 'https://cursemaven.com'
+    }
 }
+
 
 dependencies {
     if (propertyBool('use_modern_java_syntax')) {
@@ -144,6 +149,15 @@ dependencies {
         testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
+    // Biomes O’ Plenty 1.12.2 (projectId 220318, replace <BOP_FILE_ID>)
+runtimeOnly rfg.deobf("curse.maven:biomes-o-plenty-220318:3558882")
+// If you compile against BOP classes, also add:
+compileOnly  rfg.deobf("curse.maven:biomes-o-plenty-220318:3558882")
+
+// BYG 1.12.2 (projectId 247560, replace <BYG_FILE_ID>)
+runtimeOnly rfg.deobf("curse.maven:biomes-youll-go-1-12-2-fixed-807295:4357610")
+// If you compile against BYG classes, also add:
+compileOnly  rfg.deobf("curse.maven:biomes-youll-go-1-12-2-fixed-807295:4357610")
 }
 
 apply from: 'gradle/scripts/dependencies.gradle'
@@ -209,7 +223,7 @@ jar {
             if (propertyBool('coremod_includes_mod')) {
                 attribute_map['FMLCorePluginContainsFMLMod'] = true
                 def currentTasks = gradle.startParameter.taskNames
-                if (currentTasks[0] == 'build' || currentTasks[0] == 'prepareObfModsFolder' || currentTasks[0] == 'runObfClient') {
+                if (currentTasks && ['build','prepareObfModsFolder','runObfClient'].contains(currentTasks[0])) {
                     attribute_map['ForceLoadAsMod'] = true
                 }
             }
@@ -217,11 +231,23 @@ jar {
         if (propertyBool('use_access_transformer')) {
             attribute_map['FMLAT'] = propertyString('access_transformer_locations')
         }
+
+        // Point Mixin at the config you actually ship
+        if (propertyBool('use_mixins')) {
+    def cfgs = propertyStringList('mixin_configs')
+        .collect { "mixins.${it}.json" }
+        .join(',')
+    attribute_map['MixinConfigs'] = cfgs
+}
+
+
         attributes(attribute_map)
     }
-    // Add all embedded dependencies into the jar
-    from(provider{ configurations.embed.collect {it.isDirectory() ? it : zipTree(it)} })
+
+    // keep your embedded deps
+    from(provider { configurations.embed.collect { it.isDirectory() ? it : zipTree(it) } })
 }
+
 
 idea {
     module {
