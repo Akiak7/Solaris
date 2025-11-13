@@ -285,14 +285,16 @@ compileTestJava {
     sourceCompatibility = targetCompatibility = 8
 }
 
-test {
-    useJUnitPlatform()
-    javaLauncher.set(javaToolchains.launcherFor {
-        languageVersion = JavaLanguageVersion.of(8)
-    })
-    if (propertyBool('show_testing_output')) {
-        testLogging {
-            showStandardStreams = true
+if (propertyBool('enable_junit_testing')) {
+    test {
+        useJUnitPlatform()
+        javaLauncher.set(javaToolchains.launcherFor {
+            languageVersion = JavaLanguageVersion.of(8)
+        })
+        if (propertyBool('show_testing_output')) {
+            testLogging {
+                showStandardStreams = true
+            }
         }
     }
 }
