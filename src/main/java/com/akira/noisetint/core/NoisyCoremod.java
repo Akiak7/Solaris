@@ -3,7 +3,7 @@ package com.akira.noisetint.core;
 import zone.rong.mixinbooter.IEarlyMixinLoader;
 import net.minecraftforge.fml.relauncher.IFMLLoadingPlugin;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -13,7 +13,10 @@ public final class NoisyCoremod implements IEarlyMixinLoader, IFMLLoadingPlugin 
     // Register ONLY the config that targets vanilla/forge here
     @Override
     public List<String> getMixinConfigs() {
-        return Collections.singletonList("mixins.noisybiomes.vanilla.json");
+        return Arrays.asList(
+            "mixins.noisybiomes.vanilla.json",
+            "mixins.noisybiomes.bop.json"
+        );
     }
 
     // ---- IFMLLoadingPlugin stubs ----
