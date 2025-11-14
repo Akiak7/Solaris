@@ -2,8 +2,8 @@ package com.akira.noisetint.common;
 
 public final class Variant {
     // Height delta amplitudes: keep subtle
-    private static final float DEPTH_AMPL = 0.95f; // adds to base height (depth)
-    private static final float SCALE_AMPL = 0.95f; // adds to roughness (heightVariation)
+    private static final float DEPTH_AMPL = 0.3f; // adds to base height (depth)
+    private static final float SCALE_AMPL = 0.6f; // adds to roughness (heightVariation)
 
     /** Deterministic tiny bias to base height in [-DEPTH_AMPL, +DEPTH_AMPL]. */
     public static float depthDelta(int x, int z) {

@@ -9,14 +9,14 @@ public final class NoiseFieldCommon {
     private static OpenSimplexNoise baseTerrain, warpXTerrain, warpZTerrain;
     private static final long TERRAIN_SALT = 0xC0FFEEBEEF12345AL;
 
-    private static final double MAIN_SCALE = 1.0 / 2048.0;  // large regions
-    private static final double WARP_SCALE = 1.0 / 1024.0;
-    private static final double WARP_AMPL  = 0.0;
+    private static final double MAIN_SCALE = 1.0 / 4096.0;  // large regions
+    private static final double WARP_SCALE = 1.0 / 8192.0;
+    private static final double WARP_AMPL  = 8.0;
 
     // visual-tuned ranges; we’ll map to height deltas in Variant
     private static final float HUE_DEG_AMPL = 60f;   // UNUSED
-    private static final float SAT_MUL_AMPL = 0.18f; // HEIGHT VARIATION
-    private static final float VAL_MUL_AMPL = 0.18f; // DEPTH/HEIGHT
+    private static final float SAT_MUL_AMPL = 0.06f; // HEIGHT VARIATION
+    private static final float VAL_MUL_AMPL = 0.08f; // DEPTH/HEIGHT
 
     public static void reseed(long seed) {
         worldSeed = seed;
@@ -40,7 +40,7 @@ public final class NoiseFieldCommon {
         double n1 = base.eval((x - 59.0 + dx) * MAIN_SCALE, (z + 71.0 + dz) * MAIN_SCALE);
         double n2 = base.eval((x + 211.0 + dx) * MAIN_SCALE, (z + 19.0 + dz) * MAIN_SCALE);
 
-        n0 = soften(n0); n1 = soften(n1); n2 = soften(n2);
+        //n0 = soften(n0); n1 = soften(n1); n2 = soften(n2);
 
         float hueDeg = (float)(n0 * HUE_DEG_AMPL);
         float satMul = 1.0f + (float)(n1 * SAT_MUL_AMPL);
@@ -58,7 +58,7 @@ public final class NoiseFieldCommon {
         double n1 = baseTerrain.eval((x - 59.0 + dx) * MAIN_SCALE, (z + 71.0 + dz) * MAIN_SCALE);
         double n2 = baseTerrain.eval((x + 211.0 + dx) * MAIN_SCALE, (z + 19.0 + dz) * MAIN_SCALE);
 
-        n0 = soften(n0); n1 = soften(n1); n2 = soften(n2);
+        //n0 = soften(n0); n1 = soften(n1); n2 = soften(n2);
 
         float hueDeg = (float)(n0 * HUE_DEG_AMPL);
         float satMul = 1.0f + (float)(n1 * SAT_MUL_AMPL);

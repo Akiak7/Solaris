@@ -20,4 +20,9 @@ public abstract class MixinChunkGeneratorOverworldBOP_Context {
     private void nb$popCtx(int chunkX, int chunkZ, CallbackInfo ci) {
         GenContext.pop();
     }
+
+    @Inject(method = "<init>", at = @At("RETURN"))
+private void nb$initLog(CallbackInfo ci) {
+    System.out.println("[NoisyBiomes] BoP ChunkGenerator mixin active");
+}
 }
