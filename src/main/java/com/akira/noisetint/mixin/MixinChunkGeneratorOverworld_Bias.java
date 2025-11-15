@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import com.llamalad7.mixinextras.sugar.Local;
 
 @Pseudo
-@Mixin(targets = "net.minecraft.world.gen.ChunkGeneratorOverworld", remap = false)
+@Mixin(net.minecraft.world.gen.ChunkGeneratorOverworld.class)
 public abstract class MixinChunkGeneratorOverworld_Bias {
     private static final Logger LOG = LogManager.getLogger("NoisyBiomes-Bias");
     private static final boolean DEBUG = false;
@@ -20,7 +20,8 @@ public abstract class MixinChunkGeneratorOverworld_Bias {
     private static int toWorldZ(int z, int l, int j1){ return ((z + l + j1 + 2) << 2) + 2; }
 
     @Redirect(method = "generateHeightmap",
-              at = @At(value = "INVOKE", target = "Lnet/minecraft/world/biome/Biome;getBaseHeight()F"))
+              at = @At(value = "INVOKE", target = "Lnet/minecraft/world/biome/Biome;getBaseHeight()F"),
+              require = 0)
     private float nb$biasBase(Biome biome,
                               @Local(index = 1) int x, @Local(index = 3) int z,
                               @Local(index = 8) int k, @Local(index = 9) int l,
@@ -33,7 +34,8 @@ public abstract class MixinChunkGeneratorOverworld_Bias {
     }
 
     @Redirect(method = "generateHeightmap",
-              at = @At(value = "INVOKE", target = "Lnet/minecraft/world/biome/Biome;getHeightVariation()F"))
+              at = @At(value = "INVOKE", target = "Lnet/minecraft/world/biome/Biome;getHeightVariation()F"),
+              require = 0)
     private float nb$biasVar(Biome biome,
                              @Local(index = 1) int x, @Local(index = 3) int z,
                              @Local(index = 8) int k, @Local(index = 9) int l,
